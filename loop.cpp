@@ -2,6 +2,8 @@
 //==============  LOOP
 //
 
+#include "PJ-HA-RFM_GW.h" // My global defines and extern variables to help multi file comilation.
+
 void loop() {
 //  #ifdef DEBUGPJ2
 //    Serial.print(freeRam());

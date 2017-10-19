@@ -3,6 +3,8 @@
 //
 //  sends messages over the radio network
 
+#include "PJ-HA-RFM_GW.h" // My global defines and extern variables to help multi file comilation.
+
 void sendMsg(int target) {
   #ifdef DEBUGPJ2
     Serial.println("sendMsg() - Start RF TX"); 

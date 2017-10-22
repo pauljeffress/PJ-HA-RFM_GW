@@ -154,10 +154,11 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
   int i;
   String errStr = "";       // error string to be published back to MQTT broker, when a received IP/MQTT message has an issue.
   mes.nodeID = NODEID;      // start to build an new RF message to eventually send south. The device (the Gateway) nodeID will always be 1.
-  mes.fltVal = 0;           // zero out some of the message parameters
+  mes.fltintVal = 0;           // zero out some of the message parameters
   mes.intVal = 0;
+  mes.cmd = 0;
   mqttToSend = false;       // not a valid request yet...
-  error = 4;                // assume an error is processing the IP/MQTT data, until proven otherwise
+  error = 4;                // assume an error in processing the IP/MQTT data, until proven otherwise
   dest = 999;               // 999 is just a number that makes it easy to debug/see if no dest node was found and overwritten into this variable.
 
 
@@ -193,7 +194,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
       #endif
       // reset flags before setting them...
       StatMess = false;
-      RealMess = false;
+      RealIntMess = false;
       IntMess = false;
       StrMess = false;
       
@@ -201,14 +202,14 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
                                                                                                 //    These special Integer DIDs can only be ON/OFF 
                                                                                                 //    not any int value.
                                                                                                 
-      RealMess = ( DID==2 || DID==3 || DID==4 || (DID>=48 && DID<=63) || (DID>=400 && DID<=499));  // set global 'RealMess' to true based on devID.
+      RealIntMess = ( DID==2 || DID==3 || DID==4 || (DID>=48 && DID<=63) || (DID>=400 && DID<=499));  // set global 'RealMess' to true based on devID.
                                                                                                 
                                                                                                 
       IntMess = (DID==0 || DID==1 || DID==7 || (DID >=32 && DID <=39) || (DID>=64 && DID<=71) || (DID>=100 && DID<=116) || (DID>=201 && DID<=299)  ); // set global 'IntMess' to true based on devID.
 
       StrMess = (DID==3 || DID==72 || DID==11 || DID==12);                                     // set global 'StrMess' to true based on devID.
 
-      if (!(StatMess || RealMess || IntMess || StrMess)) // i.e we have a message that did not fit any of the above categories - and thats bad!
+      if (!(StatMess || RealIntMess || IntMess || StrMess)) // i.e we have a message that did not fit any of the above categories - and thats bad!
         {
           error = 5;
           errStr = "No Categ Match";
@@ -217,27 +218,27 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
       // Now that we have pulled the message apart, checked and classified it, lets action it...
 
       // Check if message is for Gateway itself and is it an Uptime request?
-      if (dest == 1 && DID == 0)          // gateway uptime wanted
+      if (dest == NODEID && DID == 0)          // gateway uptime wanted
         {                                                   // so construct MQTT topic and message/payload
         sprintf(buff_mess,  "%d", upTime);                  //    copy upTime into the buff_Mess (i.e. payload we will send north)
-        sprintf(buff_topic, "home/rfm_gw/nb/node01/dev000");  //    copy the correct topic to publish this info out on into buff_topic 
+        sprintf(buff_topic, "home/sam_gw/nb/node%02d/dev000", NODEID);  //    copy the correct topic to publish this info out on into buff_topic 
         mqttClient.publish(buff_topic,buff_mess);           // MQTT publish the topic & payload
         error =0;
         }
 
       // Check if message is for Gateway itself and is it a Version request?
-      if (dest == 1 && DID == 3)          // gateway version wanted
+      if (dest == NODEID && DID == 3)          // gateway version wanted
         {                                                   // so construct MQTT topic and message/payload
         for (i=0; i<sizeof(VERSION); i++){                  //    copy the VERSION string into the buff_Mess (i.e. payload we will send north)
           buff_mess[i] = (VERSION[i]); }
-        mes.payLoad[i] = '\0';
-        sprintf(buff_topic, "home/rfm_gw/nb/node01/dev003");  //    copy the correct topic to publish this info out on into buff_topic 
+        mes.payLoad[i] = '\0';   // xxxx - check on this, looks odd???
+        sprintf(buff_topic, "home/sam_gw/nb/node%02d/dev003", NODEID);  //    copy the correct topic to publish this info out on into buff_topic 
         mqttClient.publish(buff_topic,buff_mess);           // MQTT publish the topic & payload
-        error =0;
+        error = 0;
         }
 
-      // Message is for an RF Node and its a StatMess. 
-      if (dest>1 && StatMess)              
+      // Check if message is for an RF Node (not this GW) and its a StatMess. 
+      if (dest != NODEID && StatMess)              
         {
         #ifdef DEBUGPJ
           Serial.println("StatMess");
@@ -254,7 +255,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
         }
 
       // Message is for an RF Node and its a StatMess.
-      if (dest>1 && (DID >=40 && DID <48))    // check if someone is trying to ON/OFF a DevID you can only READ from. i.e. an input.
+      if (dest != NODEID && (DID >=40 && DID <48))    // check if someone is trying to ON/OFF a DevID you can only READ from. i.e. an input.
                                               // I would have though this IF should also be confirming its a StatMess?????
         {
         #ifdef DEBUGPJ
@@ -270,22 +271,25 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
         }
         
       // Message is for an RF Node and its a RealMess.
-      if ( dest>1 && RealMess )          // It's a Real Message. Could be a READ or a WRITE.
+      if ( dest != NODEID && RealIntMess )          // It's a Real Message. Could be a READ or a WRITE.
         {
         if (mes.cmd == 0) // i.e its a WRITE
           {
-          mes.fltVal = strPayload.toFloat();  // If its a SET/WRITE then copy the MQTT payload across to the RF FltVal
-                                              // Note: If its a GET/READ, we don't have to set anything else in the mess struct 
-                                              // because the mes.cmd will be interpreted at the RF end Node, and a READ will be performed.  
+          mes.fltintVal = strPayload.toFloat() * 100;   // If its a SET/WRITE then take the MQTT payload (which contains the 
+                                                        // Float value to be written to RF Node DEVice) and convert it to 
+                                                        // an Integer by multiplying it by 100 (assuming only two dec place)
+                                                        // and then place it in the fltintVal ready for RF TX.
+                                                        // Note: If its a GET/READ, we don't have to set anything else in the mess struct 
+                                                        // because the mes.cmd will be interpreted at the RF end Node, and a READ will be performed.  
           }
           #ifdef DEBUGPJ
-            Serial.println("RealMess");
+            Serial.println("RealIntMess");
           #endif
           mqttToSend = true;  // flag that there is an RF message to send south. It will go when main loop() checks this flag.
         }
 
       // Message is for an RF Node and its an IntMess.
-      if ( dest>1 && IntMess )          // It's an Integer Message. Could be a READ or a WRITE.
+      if ( dest != NODEID && IntMess )          // It's an Integer Message. Could be a READ or a WRITE.
         {
         if (mes.cmd == 0) // i.e its a WRITE
           {
@@ -301,12 +305,12 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
 
 
       // Message is for an RF Node and its a StrMess.
-      if ( dest>1 && StrMess )          // It's an String Message. Could be a READ or a WRITE.
+      if ( dest != NODEID && StrMess )          // It's an String Message. Could be a READ or a WRITE.
         {
         if (mes.cmd == 0)               //    If its a SET/WRITE then copy the MQTT payload across to the RF Payload (there is no stringVal)
           {
           int i; 
-          for (i=0; i<32; i++)
+          for (i=0; i<STRPAYLOADSIZE; i++)
             { 
             (mes.payLoad[i])=payload[i];
             }
@@ -316,7 +320,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
 
       // Check if any errors were found during the above processing, if not, set error to 0.
       if (mqttToSend && (error == 4)) error = 0;    // valid device has been selected, hence error = 0
-                                                    //     Bit of an odd way to confirm that we can clear the error flag of its default 4 that it was set to at beginning of this function.
+                                                    // Bit of an odd way to confirm that we can clear the error flag of its default 4 that it was set to at beginning of this function.
   
       respNeeded = mqttToSend;                      // valid request needs radio response
       
@@ -325,8 +329,8 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
         Serial.println(mes.payLoad);
         Serial.print("intVal:  ");
         Serial.println(mes.intVal);
-        Serial.print("fltVal:  ");
-        Serial.println(mes.fltVal);
+        Serial.print("fltintVal:  ");
+        Serial.println(mes.fltintVal);
       #endif
       } // end of the 'else' that got run if payload len != 0
     }  // end of the 'if' that checks topic is correct length
@@ -340,7 +344,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
   if ((error != 0) && verbose)          
     {
     sprintf(buff_mess, "err%d node%d %s", error,dest, errStr.c_str());  
-    sprintf(buff_topic, "home/rfm_gw/nb/node01/dev91");             // construct MQTT topic and message
+    sprintf(buff_topic, "home/sam_gw/nb/node%02d/dev91", NODEID);             // construct MQTT topic and message
     mqttClient.publish(buff_topic,buff_mess);                       // publish ...
     #ifdef DEBUGPJ
       Serial.print("Syntax error code is: ");
@@ -362,9 +366,9 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
 // GENERAL STARTUP VARIABLES & DEFAULTS 
 //-------------------------------------------------------------------------
 // Ethernet settings
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x00 };	// MAC address for ethernet
-byte mqtt_server[] = { 192, 168, 200, 241};		// MQTT broker address
-byte ip[] = { 192, 168, 200 , 248 };			// Gateway IP address
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x01 };	// My MAC address for ethernet match it to NodeID to ease troubleshooting.
+byte mqtt_server[] = { 192, 168, 200, 241};		        // MQTT broker address
+byte ip[] = { 192, 168, 200 , 248 };			            // My IP address
 
 // Others
 Message mes;
@@ -379,13 +383,14 @@ bool	respNeeded = false;			  // MQTT message flag in case of radio connection fa
 bool	mqttToSend = false;			  // Flag that is set when we have a southbound RF message to send out to remote Node during main loop() run through.
 bool	promiscuousMode = false;	// only receive closed network nodes
 bool	verbose = true;				    // generate error messages
-bool	IntMess, RealMess, StatMess, StrMess;	// types of messages
+bool	IntMess, RealIntMess, StatMess, StrMess;	// types of messages
 long	onMillis;				// timestamp when radio LED was turned on. Used to keep track of when to turn it off.
-char	*subTopic = "home/rfm_gw/sb/#";		// MQTT subscription topic ; direction is southbound
-char	*clientName = "RFM_gateway";		  // MQTT system name of gateway
+char	*subTopic = "home/sam_gw/sb/#";		// MQTT subscription topic ; direction is southbound
+char	*clientName = "SAMD_RFM_gateway";		  // MQTT system name of gateway
 char	buff_topic[30];				// MQTT publish topic string
 char	buff_mess[32];				// MQTT publish message string
-RFM69 radio;
+RFM69 radio = RFM69(PJ_RFM_SS, PJ_RFM_IRQ_PIN, PJ_RFM_IS_RFM69HCW, PJ_RFM_IRQ_NUM);  // define all pins if they are not the standard ones the RFM69 lib uses
+                                                                    // in this case define them for the SenseBender GW board.
 EthernetClient ethClient;
 PubSubClient mqttClient(mqtt_server, 1883, mqtt_subs, ethClient );
 

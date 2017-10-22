@@ -6,7 +6,10 @@
 
 void setup() {
 
-  Serial.begin(SERIAL_BAUD);
+  while (!Serial);  // On a SAMD based board you need this or you may miss first bits of output. 
+                    // But if no USB is connected then it will hang here.
+
+  Serial.begin(SERIAL_BAUD); // Initialise the 1st hw serial port for Arduino IDE Serial Monitor
   Serial.println("PJ RFM Gateway");
   Serial.print("N ");
   Serial.print(NODEID);
@@ -58,11 +61,11 @@ void setup() {
 
   // manually toggle reset on dodgy Arduino Ethernet Shield from China with no reset conrtoller. 
   // See notes in PJ_RFM_MQTT_GW_22v23.ino re v23 12-09-16.
-  pinMode(PJETHRESET, OUTPUT);      // setup the pin I have jumpered to Eth Shield reset track.
-  digitalWrite(PJETHRESET, LOW);    // reset the Eth Shield (active low reset)
-  delay(300);                       // keep it in reset for X mSec.
-  digitalWrite(PJETHRESET, HIGH);   // allow it to come out of reset
-  delay(5000);                      // Give Eth Shield time to settle after reset.
+  // pj samd stuff     pinMode(PJETHRESET, OUTPUT);      // setup the pin I have jumpered to Eth Shield reset track.
+  // pj samd stuff     digitalWrite(PJETHRESET, LOW);    // reset the Eth Shield (active low reset)
+  // pj samd stuff     delay(300);                       // keep it in reset for X mSec.
+  // pj samd stuff     digitalWrite(PJETHRESET, HIGH);   // allow it to come out of reset
+  // pj samd stuff     delay(5000);                      // Give Eth Shield time to settle after reset.
 
   // setup LED Pins etc.
   pinMode(R_LED, OUTPUT);          // set pin of radio indicator
@@ -70,29 +73,29 @@ void setup() {
   pinMode(P_LED, OUTPUT);         // set pin for Power/Startup indicator
   digitalWrite(MQCON, LOW);         // switch off MQTT connection indicator
   digitalWrite(R_LED, LOW);       // switch off radio indicator
-  digitalWrite(P_LED, HIGH);        // switch OFF Power/Startup indicator
+  digitalWrite(P_LED, LOW);        // switch OFF Power/Startup indicator
 
   // test all LEDS - flash all LEDS 3 times. Then leave just PWR LED on.
   delay(1000);
   digitalWrite(MQCON, HIGH);         // switch all LEDS ON
   digitalWrite(R_LED, HIGH);       
-  digitalWrite(P_LED, LOW);        
+  digitalWrite(P_LED, HIGH);        
   delay(1000);
   digitalWrite(MQCON, LOW);         // switch all LEDS OFF
   digitalWrite(R_LED, LOW);       
-  digitalWrite(P_LED, HIGH);        
+  digitalWrite(P_LED, LOW);        
   delay(1000);
   digitalWrite(MQCON, HIGH);         // switch all LEDS ON
   digitalWrite(R_LED, HIGH);       
-  digitalWrite(P_LED, LOW);        
+  digitalWrite(P_LED, HIGH);        
   delay(1000);
   digitalWrite(MQCON, LOW);         // switch all LEDS OFF
   digitalWrite(R_LED, LOW);       
-  digitalWrite(P_LED, HIGH);        
+  digitalWrite(P_LED, LOW);        
   delay(1000);
   digitalWrite(MQCON, HIGH);         // switch all LEDS ON
   digitalWrite(R_LED, HIGH);       
-  digitalWrite(P_LED, LOW);        
+  digitalWrite(P_LED, HIGH);        
   delay(1000);
   digitalWrite(MQCON, LOW);         // switch all LEDS OFF but Power
   digitalWrite(R_LED, LOW);             
@@ -100,11 +103,12 @@ void setup() {
 
   Serial.println("LED Flashes done");
     
-  radio.setCS(RFM_SS);          // change default Slave Select pin for RFM
-  
-  #ifdef DEBUGPJ2
-    Serial.println("radio.setCS is done");
-  #endif
+  // pj samd stuff - shouldn't need this now, as I set the SS when I define radio.   
+  // radio.setCS(RFM_SS);          // change default Slave Select pin for RFM
+  //
+  //#ifdef DEBUGPJ2
+  //  Serial.println("radio.setCS is done");
+  //#endif
    
   radio.initialize(FREQUENCY,NODEID,NETWORKID);   // initialise radio module
 
@@ -112,9 +116,10 @@ void setup() {
     Serial.println("radio.initialise is done");
   #endif
   
-  #ifdef IS_RFM69HW
-  radio.setHighPower();           // only for RFM69HW!
-  #endif
+  // pj samd stuff - shouldn't need this now, as I set the SS when I define radio.
+  //#ifdef IS_RFM69HW
+  //radio.setHighPower();           // only for RFM69HW!
+  //#endif
   
   radio.encrypt(ENCRYPTKEY);        // encrypt with shared key
   radio.promiscuous(promiscuousMode);     // listen only to nodes in closed network
@@ -139,9 +144,7 @@ void setup() {
   Ethernet.begin(mac, ip); // start the Ethernet connection with static IP
   Serial.println("Ethernet.begin is done");
     
-  digitalWrite(P_LED, HIGH);     // flash P_LED three times to say Ethernet setup statements done.      
-  delay(1000);
-  digitalWrite(P_LED, LOW);        
+  digitalWrite(P_LED, LOW);     // flash P_LED three times to say Ethernet setup statements done.      
   delay(1000);
   digitalWrite(P_LED, HIGH);        
   delay(1000);
@@ -150,6 +153,8 @@ void setup() {
   digitalWrite(P_LED, HIGH);        
   delay(1000);
   digitalWrite(P_LED, LOW);        
+  delay(1000);
+  digitalWrite(P_LED, HIGH);        
   delay(1000);
   
   mqttCon = 0;          // reset connection flag

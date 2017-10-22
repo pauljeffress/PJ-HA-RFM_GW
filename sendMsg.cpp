@@ -7,12 +7,26 @@
 
 void sendMsg(int target) {
   #ifdef DEBUGPJ2
-    Serial.println("sendMsg() - Start RF TX"); 
-  #endif
+    Serial.println();
+    Serial.println("RF msg about to be sent >>>>");
+    Serial.print("Outbound Message to Node:");Serial.print(radio.SENDERID);Serial.print("  with RSSI:");Serial.println(radio.RSSI);
+    Serial.println("=========RF msg data===================");
+    Serial.print("From devID:");Serial.println(mes.devID);
+    Serial.print("       cmd:");Serial.println(mes.cmd);
+    Serial.print("    intVal:");Serial.println(mes.intVal);
+    Serial.print(" fltintVal:");Serial.println(mes.fltintVal);
+    Serial.print("To  NodeID:");Serial.println(mes.nodeID);
+    Serial.print("   payLoad:");
+          for (int i=0; i<32; i++) Serial.print(mes.payLoad[i]);
+    Serial.println(":");
+    Serial.println("=======================================");
+  #endif  // DEBUGPJ2
+  
   Rstat = true;               // radio indicator on
   digitalWrite(R_LED, HIGH);  // turn on radio LED
-  onMillis = millis();        // store timestamp
-  int i = RFTXRETRIES;                  // number of transmission retries
+  onMillis = millis();        // store timestamp, so loop() can turn it off when the time is up.
+
+  int i = RFTXRETRIES;                  // number of RF transmission retries
 
   while (respNeeded && i>0) {       // first try to send packets
     #ifdef DEBUGPJ

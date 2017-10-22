@@ -15,7 +15,7 @@ void loop() {
   // CONTROL RADIO LED AND CALCULATE UPTIME 
   //
     if (Rstat) {            // turn off radio LED after 100 msec
-      if (millis() - onMillis > 100) {
+      if (millis() - onMillis > COMMS_LED_ON_PERIOD) {
         Rstat = false;
         digitalWrite(R_LED, LOW);
         }
@@ -35,7 +35,7 @@ void loop() {
   if (mqttToSend) {   // mqttToSend gets set to True via mqtt_subs() which is itself called/feed from the PubSub library.
                       // It is set to true when something subscribed to has been received from MQTT broker and it looks like 
                       // a valid message to send southbound to nodes via RF.
-    #ifdef DEBUGPJ2
+    #ifdef DEBUGx
       Serial.println("loop() - mqttToSend was TRUE, calling sendMsg() to rf tx stuff" );
     #endif
     sendMsg(dest);    // send MQTT instruction packets south over the radio network

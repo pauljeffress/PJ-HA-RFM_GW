@@ -21,7 +21,7 @@
 
 #define VERSION "SAMD-RFM_GWvGitHub"   // this value can be queried as device 3
 
-#define STRPAYLOADSIZE 32   // How many chars in the String Payload we send?
+#define STRPAYLOADSIZE 32   // How many chars in the String Payload we send? (must match in GW and Node!!!!!)
 #define RFTXRETRIES 5       // RF TX reties.
 
 /* RFM_GW CORE CONFIGURATION PARAMETERS 
@@ -56,19 +56,21 @@
 #define R_LED LED_RED	    			// RED LED - Radio activity indicator
 #define P_LED LED_BLUE          // BLUE LED - Power/Startup LED
 
+#define COMMS_LED_ON_PERIOD 1000 // How long we keep it on for, in mSec.
+
 // pj samd stuff     #define PJETHRESET NET_RST   // see notes above re v23 12-09-16.  NET_RST is a SenseBender pin name.
 
 // ==============================================
 // 'struct's that I had to place here not in main ino file, to assist compilation.
 //
 typedef struct {			// Radio packet structure max 66 bytes (only transmitted between RF GW <> Nodes, not over IP)
-    long  nodeID;			// FROM node. Using a long as its 32bits on AVR and ARM. 
-    long	devID;			// device identifier 0 is node; 31 is temperature, 32 is humidity
-    long	cmd;			  // read or write
-    long	intVal;			// integer payload
-    long	fltintVal;	// floating point payload, but multiplied by 100 and transported as a long.  Works on ARM and AVR the same.
-    char	payLoad[STRPAYLOADSIZE];	// char array, String payload
-    } Message;
+  long  nodeID;			// FROM node. Using a long as its 32bits on AVR and ARM. 
+  long	devID;			// device identifier 0 is node; 31 is temperature, 32 is humidity
+  long	cmd;			  // read or write
+  long	intVal;			// integer payload
+  long	fltintVal;	// floating point payload, but multiplied by 100 and transported as a long.  Works on ARM and AVR the same.
+  char	payLoad[STRPAYLOADSIZE];	// char array, String payload
+  } Message;
 
 // ============================================
 // Function prototypes when required;

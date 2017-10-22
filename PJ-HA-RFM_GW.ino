@@ -147,14 +147,23 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
   // if we are here it's because the PubSub library received a 'topic' & 'payload' we are subscribed to and called this function for us.
   // so we have to check it and then do what needs to be done with it.
 
+  // get payload into a format we can handle...
+  payload[length] = '\0';                     // terminate the payload string we received with '0'
+  String strPayload = String((char*)payload); // convert the payload to string, as it was a ptr to some bytes when we received it.
+
+
   #ifdef DEBUGPJ2
     Serial.println();
-    Serial.println("IP/MQTT RX so starting mqtt_subs()"); 
+    Serial.println("<<<< IP/MQTT message received so starting mqtt_subs()"); 
+    Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+    Serial.print("+   Topic:"); Serial.println(topic);
+    Serial.print("+ Payload:"); Serial.println(strPayload);   
+    Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
   #endif
   int i;
   String errStr = "";       // error string to be published back to MQTT broker, when a received IP/MQTT message has an issue.
   mes.nodeID = NODEID;      // start to build an new RF message to eventually send south. The device (the Gateway) nodeID will always be 1.
-  mes.fltintVal = 0;           // zero out some of the message parameters
+  mes.fltintVal = 0;        // zero out some of the message parameters
   mes.intVal = 0;
   mes.cmd = 0;
   mqttToSend = false;       // not a valid request yet...
@@ -162,19 +171,12 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
   dest = 999;               // 999 is just a number that makes it easy to debug/see if no dest node was found and overwritten into this variable.
 
 
-  #ifdef DEBUGPJ2
-    Serial.print("\\/  \\/  \\/ Southbound MQTT Topic received: ");
-    Serial.println(topic);
-  #endif
-
   if (strlen(topic) == 28)        // is the 'topic' we received the correct length ?
     {                             // originally was 27, now 28 as I have allowed for devID's > 99 hence three digit.
     // yes it is the correct length so lets process it...
     dest = (topic[19]-'0')*10 + topic[20]-'0';  // extract target node ID from MQTT topic and store it in global 'dest' for use later
     DID = (topic[25]-'0')*100 + (topic[26]-'0')*10 + topic[27]-'0';   // extract device ID from MQTT topic and stor it in global 'DID" for use later
     // xxxx - I really should be checking that 'dest and 'DID' are within acceptable ranges here and erroring out if not.
-    payload[length] = '\0';                     // terminate the payload string we received with '0'
-    String strPayload = String((char*)payload); // convert the payload to string, as it was a ptr to some bytes when we received it.
     // use what we have extracted to continue building our RF message
     mes.devID = DID;
     mes.cmd = 0;          // default command is '0/SET/WRITE' value, it gets changed to 1/GET/READ below if nesc.
@@ -222,6 +224,16 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
         {                                                   // so construct MQTT topic and message/payload
         sprintf(buff_mess,  "%d", upTime);                  //    copy upTime into the buff_Mess (i.e. payload we will send north)
         sprintf(buff_topic, "home/sam_gw/nb/node%02d/dev000", NODEID);  //    copy the correct topic to publish this info out on into buff_topic 
+        
+        #ifdef DEBUGPJ2
+        Serial.println();
+        Serial.println("IP/MQTT message sending >>>>"); 
+        Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        Serial.print("+   Topic:"); Serial.println(buff_topic);
+        Serial.print("+ Payload:"); Serial.println(buff_mess);   
+        Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        #endif
+        
         mqttClient.publish(buff_topic,buff_mess);           // MQTT publish the topic & payload
         error =0;
         }
@@ -233,6 +245,16 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
           buff_mess[i] = (VERSION[i]); }
         mes.payLoad[i] = '\0';   // xxxx - check on this, looks odd???
         sprintf(buff_topic, "home/sam_gw/nb/node%02d/dev003", NODEID);  //    copy the correct topic to publish this info out on into buff_topic 
+        
+        #ifdef DEBUGPJ2
+        Serial.println();
+        Serial.println("IP/MQTT message sending >>>>"); 
+        Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        Serial.print("+   Topic:"); Serial.println(buff_topic);
+        Serial.print("+ Payload:"); Serial.println(buff_mess);   
+        Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+        #endif
+        
         mqttClient.publish(buff_topic,buff_mess);           // MQTT publish the topic & payload
         error = 0;
         }
@@ -324,14 +346,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
   
       respNeeded = mqttToSend;                      // valid request needs radio response
       
-      #ifdef DEBUGxx
-        Serial.print("mes.payLoad:");
-        Serial.println(mes.payLoad);
-        Serial.print("intVal:  ");
-        Serial.println(mes.intVal);
-        Serial.print("fltintVal:  ");
-        Serial.println(mes.fltintVal);
-      #endif
+
       } // end of the 'else' that got run if payload len != 0
     }  // end of the 'if' that checks topic is correct length
   else    // i.e The 'topic' we received was not of correct length
@@ -354,7 +369,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
     #endif
   }
 
-  #ifdef DEBUGPJ2
+  #ifdef DEBUGx
     Serial.println("End mqtt_subs()"); 
   #endif
  

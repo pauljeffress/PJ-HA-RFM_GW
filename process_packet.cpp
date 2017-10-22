@@ -12,24 +12,25 @@
 void processPacket() {
   bool MesSizeOK = false; 
   
-  #ifdef DEBUGPJ2
+  #ifdef DEBUGx
     Serial.println();
     Serial.println("<<<rf-rx<<< so Start processPacket()"); 
   #endif
-  Rstat = true;                // set radio indicator flag 
+  
+  Rstat = true;               // set radio indicator flag 
   digitalWrite(R_LED, HIGH);  // turn on radio LED
-  onMillis = millis();        // store timestamp
+  onMillis = millis();        // store timestamp, so loop() can turn it off when the time is up.
 
-  if (radio.DATALEN == sizeof(mes)) // we got valid sized message from an AVR node.
+  if (radio.DATALEN == sizeof(mes)) // we got valid sized message from a node.
     {
     mes = *(Message*)radio.DATA;  // copy radio packet
     MesSizeOK = true; 
     }
-  
-    
-  if (MesSizeOK == false) // wrong message size means trouble
+     
+  if (!MesSizeOK) // Bad message size - wrong message size means trouble
     {
-    #ifdef DEBUGPJ
+    #ifdef DEBUGPJ2
+      Serial.println();
       Serial.println("<<<< RF msg received but had invalid message size.");
       Serial.print("radio.DATALEN:");
       Serial.println(radio.DATALEN);
@@ -37,50 +38,48 @@ void processPacket() {
       Serial.print("expected mes size:");
       Serial.println(sizeof(mes));
       
-      // Serial.print('[');Serial.print(radio.SENDERID, DEC);Serial.print("] ");
-      // for (byte i = 0; i < radio.DATALEN; i++)
-      //   Serial.print((char)radio.DATA[i]);
-      // Serial.print("   [RX_RSSI:");Serial.print(radio.RSSI);Serial.print("]");
-
       mes = *(Message*)radio.DATA;  // copy radio packet
-      Serial.print("Inbound Message from Node:");Serial.print(radio.SENDERID);Serial.print("  with RSSI:");Serial.println(radio.RSSI);
-      Serial.println("=========msg data===================");
-      Serial.print("   devID:");Serial.println(mes.devID);
-      Serial.print("     cmd:");Serial.println(mes.cmd);
-      Serial.print("  intVal:");Serial.println(mes.intVal);
-      Serial.print("  fltVal:");Serial.println(mes.fltVal);
-      Serial.print("  NodeID:");Serial.println(mes.nodeID);
-      Serial.print(" payLoad:");
+
+      Serial.print("Inbound Message from Node:");Serial.print(radio.SENDERID);Serial.print(" with RSSI:");Serial.println(radio.RSSI);
+      Serial.println("=========RF msg data===================");
+      Serial.print("From devID:");Serial.println(mes.devID);
+      Serial.print("       cmd:");Serial.println(mes.cmd);
+      Serial.print("    intVal:");Serial.println(mes.intVal);
+      Serial.print(" fltintVal:");Serial.println(mes.fltintVal);
+      Serial.print("To  NodeID:");Serial.println(mes.nodeID);
+      Serial.print("   payLoad:");
             for (int i=0; i<32; i++) Serial.print(mes.payLoad[i]);
       Serial.println(":");
-      Serial.println("====================================");
-      
-    #endif  
+      Serial.println("=======================================");
+    #endif  // DEBUGPJ2
     }
     
-  else    // message size OK...and mes is properly populated
+  else    // message size OK...
     {
-    // construct MQTT northbound topic ready to send
-    sprintf(buff_topic, "home/sam_gw/nb/node%02d/dev%03d", radio.SENDERID, mes.devID);  
-    #ifdef DEBUGPJ
-      //Serial.println("<<<< RF msg received, validated and published via MQTT to Mosquitto.");
-      Serial.print("Inbound Message is - radio.senderID:");
-      Serial.print(radio.SENDERID); Serial.print(", ");
-      Serial.print(mes.devID);  Serial.print(", ");
-      Serial.print(mes.cmd);  Serial.print(", ");
-      Serial.print(mes.intVal); Serial.print(", ");
-      Serial.print(mes.fltintVal); Serial.print(", RSSI=");
-      Serial.print(radio.RSSI); Serial.print(" Node:");
-      Serial.print(mes.nodeID); Serial.print(" Str Payload:");
-      for (int i=0; i<STRPAYLOADSIZE; i++) Serial.print(mes.payLoad[i]);
-      Serial.println();
-    #endif  
+    #ifdef DEBUGPJ2
+    Serial.println();
+    Serial.println("<<<< RF msg received with correct size.");
+    Serial.print("Inbound Message from Node:");Serial.print(radio.SENDERID);Serial.print(" with RSSI:");Serial.println(radio.RSSI);
+    Serial.println("=========RF msg data===================");
+    Serial.print("From devID:");Serial.println(mes.devID);
+    Serial.print("       cmd:");Serial.println(mes.cmd);
+    Serial.print("    intVal:");Serial.println(mes.intVal);
+    Serial.print(" fltintVal:");Serial.println(mes.fltintVal);
+    Serial.print("To  NodeID:");Serial.println(mes.nodeID);
+    Serial.print("   payLoad:");
+          for (int i=0; i<32; i++) Serial.print(mes.payLoad[i]);
+    Serial.println(":");
+    Serial.println("=======================================");
+    #endif  // DEBUGPJ2
     
     // reset flags before setting them...
     StatMess = false;
     RealIntMess = false;
     IntMess = false;
     StrMess = false;
+
+    // construct MQTT northbound topic ready to send
+    sprintf(buff_topic, "home/sam_gw/nb/node%02d/dev%03d", radio.SENDERID, mes.devID); 
 
     // construct MQTT Payload, according to incoming device ID
     DID = mes.devID;            
@@ -127,19 +126,23 @@ void processPacket() {
         break;
       } // end switch
 
-    #ifdef DEBUGPJ
-      Serial.print("^^^^ Northbound MQTT message to publish: ");
-      Serial.print(buff_topic);
-      Serial.print(": ");
-      Serial.println(buff_mess);
-    #endif
+        
+      #ifdef DEBUGPJ2
+      Serial.println();
+      Serial.println("IP/MQTT message sending >>>>"); 
+      Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+      Serial.print("+   Topic:"); Serial.println(buff_topic);
+      Serial.print("+ Payload:"); Serial.println(buff_mess);   
+      Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+      #endif
+      
 
     mqttClient.publish(buff_topic,buff_mess);     // publish MQTT message in northbound topic
 
     if (radio.ACKRequested()) radio.sendACK();      // reply to any radio ACK requests
     }
 
-  #ifdef DEBUGPJ2
+  #ifdef DEBUGx
     Serial.println("End processPacket()"); 
   #endif
 } 

@@ -6,8 +6,9 @@
 
 void setup() {
 
-  while (!Serial);  // On a SAMD based board you need this or you may miss first bits of output. 
+  //while (!Serial);  // On a SAMD based board you need this or you may miss first bits of output. 
                     // But if no USB is connected then it will hang here.
+  delay(5000);  // if we have commented out the above "while (!Serial);" then wait a bit before getting going to give Serial time to init.
 
   Serial.begin(SERIAL_BAUD); // Initialise the 1st hw serial port for Arduino IDE Serial Monitor
   Serial.println("PJ RFM Gateway");

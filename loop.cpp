@@ -5,13 +5,6 @@
 #include "PJ-HA-RFM_GW.h" // My global defines and extern variables to help multi file comilation.
 
 void loop() {
-//  #ifdef DEBUGPJ2
-//    Serial.print(freeRam());
-//    Serial.print(".");
-//    delay(1000);
-//  #endif
-
-
   // CONTROL RADIO LED AND CALCULATE UPTIME 
   //
     if (Rstat) {            // turn off radio LED after 100 msec
@@ -32,28 +25,44 @@ void loop() {
   
   // RF SEND MESSAGE to node if there is one ready to go.
   //
-  if (mqttToSend) {   // mqttToSend gets set to True via mqtt_subs() which is itself called/feed from the PubSub library.
+  if (rfToSend) {   // rfToSend gets set to True via mqtt_subs() which is itself called/feed from the PubSub library.
                       // It is set to true when something subscribed to has been received from MQTT broker and it looks like 
                       // a valid message to send southbound to nodes via RF.
     #ifdef DEBUGx
-      Serial.println("loop() - mqttToSend was TRUE, calling sendMsg() to rf tx stuff" );
+      Serial.println("loop() - rfToSend was TRUE, calling rfSendMsg() to rf tx stuff" );
     #endif
-    sendMsg(dest);    // send MQTT instruction packets south over the radio network
-                      // 'dest' is the RF node ID, it must have been set by mqtt_Subs() at same time as mqttToSend was set to true perhaps?
+    rfSendMsg(dest);    // send MQTT instruction packets south over the radio network
+                      // 'dest' is the RF node ID, it must have been set by mqtt_Subs() at same time as rfToSend was set to true perhaps?
     }   
 
   // RF RECEIVE MESSAGE if one has arrived and MQTT SEND MESSAGE if need be
   //
-  if (radio.receiveDone()) { // check for received radio packets and construct MQTT message
-    processPacket();
-    } 
+  
+  // New RadioHead code to check for and grab an RF packet
+  uint8_t len = sizeof(radioDataBuf);
+  uint8_t from;
+  if (manager.recvfromAck(radioDataBuf, &len, &from)) // a valid RadioHead message was received for this node.
+  {
+    Serial.print("got a valid RadioHead message for this node from=");
+    Serial.print(from);
+    Serial.print(", len=");
+    Serial.print(len);
+    Serial.print(" : data="); 
+    Serial.println((char*)radioDataBuf);
+  
+    processRfPacket(len, from);
+
+  }
+  // Old pre RadioHead method....
+  // if (radio.receiveDone()) { // check for received radio packets and construct MQTT message
+  //   processRfPacket();
+  //   } 
 
   // MQTT/IP - CHECK CONNECTION STILL UP - REESTABLISH IF NOT - RECEIVE/PROCESS MQTT SUBSCRIPTIONS
   //
   if (!mqttClient.loop()) {     // check connection MQTT server and process MQTT subscription input
     #ifdef DEBUGPJ2
       Serial.println("Loop() - mqtt not connected");
-      //Serial.println(freeRam());
     #endif
     mqttCon = 0;                  // if you get to this line the MQTT/IP connection is down.
     digitalWrite(MQCON, LOW);     // switch off the MQTT/IP Connection LED, as we have lost connection.

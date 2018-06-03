@@ -3,10 +3,16 @@
 
 #include <arduino.h>
 
-#include <RFM69.h>
+#define RH_MESH_MAX_MESSAGE_LEN 80  // Max size of packet for RadioHead
+#define HARFPACKSIZE 99 // Proper packet size for one of my home automation RF packets
+#include <RHMesh.h>
+#include <RH_RF69.h>
 #include <SPI.h>
 #include <Ethernet.h>
 #include <PubSubClient.h>
+
+// RadioHead Mesh Addressing
+#define CLIENT_ADDRESS 1
 
 /* DEBUG CONFIGURATION PARAMETERS */
 #define DEBUG // uncomment for debugging
@@ -27,7 +33,7 @@
 /* RFM_GW CORE CONFIGURATION PARAMETERS 
 ****************************************************/
 // Wireless settings
-#define NODEID 50				// unique node ID in the closed radio network;
+#define NODEID 01				// unique node ID in the closed radio network;
 //PJ WAS HERE - RFM_SS is very specific per hardware platform.
 //              I changed RFM_SS to 10 when testing some of this on a Moteino
 //              I used pin 8 on a real Uno (native SPI SS pin on this board is 10 but Eth shield hardwired to it
@@ -74,10 +80,9 @@ typedef struct {			// Radio packet structure max 66 bytes (only transmitted betw
 
 // ============================================
 // Function prototypes when required;
-int freeRam ();
 void mqtt_subs();
-void processPacket();
-void sendMsg(int target);
+void processRfPacket(int rfPackLen, int rfPackFrom);
+void rfSendMsg(int target);
 
 
 // =============================================
@@ -93,8 +98,8 @@ extern long	lastMinute;
 extern long	upTime;
 extern bool	Rstat;
 extern bool	mqttCon;
-extern bool	respNeeded;
-extern bool	mqttToSend;
+//extern bool	respNeeded;
+extern bool	rfToSend;
 extern bool	promiscuousMode;
 extern bool	verbose;
 extern bool	IntMess, RealIntMess, StatMess, StrMess;
@@ -103,7 +108,10 @@ extern char	*subTopic;
 extern char	*clientName;
 extern char	buff_topic[30];
 extern char	buff_mess[32];
-extern RFM69 radio;
+extern uint8_t radioDataBuf[RH_MESH_MAX_MESSAGE_LEN];
+//extern RFM69 radio;
+extern RH_RF69 driver;  
+extern RHMesh manager;
 extern EthernetClient ethClient;
 extern PubSubClient mqttClient;
 

@@ -19,7 +19,7 @@ void setup() {
   
   Serial.println("RF Config");
   Serial.print("Freq ");
-  Serial.print(FREQUENCY==RF69_433MHZ ? 433 : FREQUENCY==RF69_868MHZ ? 868 : 915);
+  Serial.print(915);
   Serial.println(" Mhz");
   
   Serial.println("ETH Config");
@@ -48,7 +48,6 @@ void setup() {
   #ifdef DEBUGPJ2
     //Serial.begin(SERIAL_BAUD);
     Serial.println("DEBUGPJ2 ON");
-    Serial.println(freeRam());
   #endif
   
   #ifdef DEBUGPJ
@@ -111,10 +110,23 @@ void setup() {
   //  Serial.println("radio.setCS is done");
   //#endif
    
-  radio.initialize(FREQUENCY,NODEID,NETWORKID);   // initialise radio module
+  //radio.initialize(FREQUENCY,NODEID,NETWORKID);   // initialise radio module  // not needed with RadioHead
 
   #ifdef DEBUGPJ2
-    Serial.println("radio.initialise is done");
+    Serial.println("radio initialisation starting.");
+  #endif
+
+  // RadioHead radio initialisation code
+  if (!manager.init())
+    {
+    Serial.println("radio init failed.");
+    while(1);
+    }
+  driver.setFrequency(915.0);
+  driver.setTxPower(13, false);
+
+  #ifdef DEBUGPJ2
+    Serial.println("radio initialisation is done.");
   #endif
   
   // pj samd stuff - shouldn't need this now, as I set the SS when I define radio.
@@ -122,12 +134,12 @@ void setup() {
   //radio.setHighPower();           // only for RFM69HW!
   //#endif
   
-  radio.encrypt(ENCRYPTKEY);        // encrypt with shared key
-  radio.promiscuous(promiscuousMode);     // listen only to nodes in closed network
+  //radio.encrypt(ENCRYPTKEY);        // encrypt with shared key // not needed with RadioHead
+  //radio.promiscuous(promiscuousMode);     // listen only to nodes in closed network // not needed with RadioHead
 
-  #ifdef DEBUGPJ2
-    Serial.println("radio.promiscuous is done");
-  #endif
+  //#ifdef DEBUGPJ2
+  //  Serial.println("radio.promiscuous is done");
+  //#endif
   
   digitalWrite(P_LED, HIGH);     // flash P_LED twice to say we have completed radio setup.      
   delay(1000);
@@ -177,7 +189,6 @@ void setup() {
 
   #ifdef DEBUGPJ2
     Serial.println("Setup Done");
-    Serial.println(freeRam());
   #endif
   
 } // end setup

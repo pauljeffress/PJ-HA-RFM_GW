@@ -41,7 +41,7 @@
 // v20 05-08-16 - As per the fix I did in v18, because I had recently updated the Arduino IDE on my PC, the w5100.h file that I had
 //                previously customised (see my Evernotes) had been overwritten with the default un customised version. As a result
 //                my GW started locking up again.  So I fixed my w5100.h again and all was well.
-// v21 04-09-16 - I noticed that for some reason this gw code in functions processPacket() and mqtt_subs() seemed to have dev000 (uptime) and dev003 (version string)
+// v21 04-09-16 - I noticed that for some reason this gw code in functions processRfPacket() and mqtt_subs() seemed to have dev000 (uptime) and dev003 (version string)
 //                as a RealMes!!! Dev000 (uptime) is an Integer and Dev003 (vesrion string) is a SringMes in all node code, so changed them here.
 // v22 08/09-09-16 - Moved a bunch of Println statements out of DEBUG defs so they always run, tidied them up and made a number of them more descriptive.
 //                   I did this while I was trying to troubleshoot what still feels like an unstable GW.
@@ -166,7 +166,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
   mes.fltintVal = 0;        // zero out some of the message parameters
   mes.intVal = 0;
   mes.cmd = 0;
-  mqttToSend = false;       // not a valid request yet...
+  rfToSend = false;       // not a valid request yet...
   error = 4;                // assume an error in processing the IP/MQTT data, until proven otherwise
   dest = 999;               // 999 is just a number that makes it easy to debug/see if no dest node was found and overwritten into this variable.
 
@@ -265,12 +265,12 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
         #ifdef DEBUGPJ
           Serial.println("StatMess");
         #endif
-        mqttToSend = true;                          // flag that there is an RF message to send south. It will go when main loop() checks this flag.
+        rfToSend = true;                          // flag that there is an RF message to send south. It will go when main loop() checks this flag.
         if (strPayload == "ON") mes.intVal = 1;     // convert MQTT payload string (ON>1, OFF>0) or leave it as READ in payload string 
         else if (strPayload == "OFF") mes.intVal = 0;
         else if (strPayload != "READ") // invalid payload; do not process
                 { 
-                mqttToSend = false;
+                rfToSend = false;
                 error = 3;
                 errStr = "invalid payload";
                 }
@@ -283,10 +283,10 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
         #ifdef DEBUGPJ
           Serial.println("StatMess40-47");
         #endif
-        if (strPayload == "READ") mqttToSend = true; // flag that there is an RF message to send south. It will go when main loop() checks this flag.
+        if (strPayload == "READ") rfToSend = true; // flag that there is an RF message to send south. It will go when main loop() checks this flag.
         else // invalid payload; do not process
            { 
-           mqttToSend = false;
+           rfToSend = false;
            error = 3;
            errStr = "invalid payload";
            }
@@ -307,7 +307,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
           #ifdef DEBUGPJ
             Serial.println("RealIntMess");
           #endif
-          mqttToSend = true;  // flag that there is an RF message to send south. It will go when main loop() checks this flag.
+          rfToSend = true;  // flag that there is an RF message to send south. It will go when main loop() checks this flag.
         }
 
       // Message is for an RF Node and its an IntMess.
@@ -322,7 +322,7 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
           #ifdef DEBUGPJ
             Serial.println("IntMess");
           #endif
-          mqttToSend = true;  // flag that there is an RF message to send south. It will go when main loop() checks this flag.
+          rfToSend = true;  // flag that there is an RF message to send south. It will go when main loop() checks this flag.
         }
 
 
@@ -337,14 +337,14 @@ void mqtt_subs(char* topic, byte* payload, unsigned int length)
             (mes.payLoad[i])=payload[i];
             }
           }
-        mqttToSend = true;              // flag that there is an RF message to send south. It will go when main loop() checks this flag.
+        rfToSend = true;              // flag that there is an RF message to send south. It will go when main loop() checks this flag.
         }
 
       // Check if any errors were found during the above processing, if not, set error to 0.
-      if (mqttToSend && (error == 4)) error = 0;    // valid device has been selected, hence error = 0
+      if (rfToSend && (error == 4)) error = 0;    // valid device has been selected, hence error = 0
                                                     // Bit of an odd way to confirm that we can clear the error flag of its default 4 that it was set to at beginning of this function.
   
-      respNeeded = mqttToSend;                      // valid request needs radio response
+      //respNeeded = rfToSend;                      // valid request needs radio response
       
 
       } // end of the 'else' that got run if payload len != 0
@@ -394,8 +394,8 @@ long	lastMinute = -1;	// timestamp last minute
 long	upTime = 0;				// uptime in minutes
 bool	Rstat = false;		// radio indicator flag
 bool	mqttCon = false;	// MQTT broker connection flag
-bool	respNeeded = false;			  // MQTT message flag in case of radio connection failure
-bool	mqttToSend = false;			  // Flag that is set when we have a southbound RF message to send out to remote Node during main loop() run through.
+//bool	respNeeded = false;			  // MQTT message flag in case of radio connection failure
+bool	rfToSend = false;			  // Flag that is set when we have a southbound RF message to send out to remote Node during main loop() run through.
 bool	promiscuousMode = false;	// only receive closed network nodes
 bool	verbose = true;				    // generate error messages
 bool	IntMess, RealIntMess, StatMess, StrMess;	// types of messages
@@ -404,16 +404,29 @@ char	*subTopic = "home/sam_gw/sb/#";		// MQTT subscription topic ; direction is 
 char	*clientName = "SAMD_RFM_gateway";		  // MQTT system name of gateway
 char	buff_topic[30];				// MQTT publish topic string
 char	buff_mess[32];				// MQTT publish message string
-RFM69 radio = RFM69(PJ_RFM_SS, PJ_RFM_IRQ_PIN, PJ_RFM_IS_RFM69HCW, PJ_RFM_IRQ_NUM);  // define all pins if they are not the standard ones the RFM69 lib uses
+
+uint8_t radioDataBuf[RH_MESH_MAX_MESSAGE_LEN]; //RadioHead tx/rx data
+
+
+// Define our RFM69 RadioHead 'driver'.
+RH_RF69 driver(PJ_RFM_SS, PJ_RFM_IRQ_PIN);  
+
+// RadioHead 'manager' to manage message delivery and receipt, using the driver declared above
+RHMesh manager(driver, CLIENT_ADDRESS);
+
+
+//old pre RadioHead radio definition.
+//RFM69 radio = RFM69(PJ_RFM_SS, PJ_RFM_IRQ_PIN, PJ_RFM_IS_RFM69HCW, PJ_RFM_IRQ_NUM);  // define all pins if they are not the standard ones the RFM69 lib uses
                                                                     // in this case define them for the SenseBender GW board.
+
 EthernetClient ethClient;
 PubSubClient mqttClient(mqtt_server, 1883, mqtt_subs, ethClient );
 
 
 // Add prototypes as what compiled ok before now seems to want prototypes
 void mqtt_subs(char* topic, byte* payload, unsigned int length);
-void sendMsg(int target);
-void processPacket();
+void rfSendMsg(int target);
+void processRfPacket();
 
 
 

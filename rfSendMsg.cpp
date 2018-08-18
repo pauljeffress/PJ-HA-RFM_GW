@@ -9,7 +9,6 @@ void rfSendMsg(int rfPackTo) {
   #ifdef DEBUGPJ2
     Serial.println();
     Serial.println("RF msg about to be sent >>>>");
-<<<<<<< HEAD
     Serial.print("Outbound Message to Node:");Serial.println(rfPackTo);
     Serial.println("=========RF msg data===================");
     Serial.print("Src NodeID:");Serial.println(mes.nodeID);
@@ -17,15 +16,6 @@ void rfSendMsg(int rfPackTo) {
     Serial.print("       cmd:");Serial.println(mes.cmd);
     Serial.print("    intVal:");Serial.println(mes.intVal);
     Serial.print(" fltintVal:");Serial.println(mes.fltintVal);
-=======
-    Serial.print("Outbound Message to Node:");Serial.print(rfPackTo);
-    Serial.println("=========RF msg data===================");
-    Serial.print("From devID:");Serial.println(mes.devID);
-    Serial.print("       cmd:");Serial.println(mes.cmd);
-    Serial.print("    intVal:");Serial.println(mes.intVal);
-    Serial.print(" fltintVal:");Serial.println(mes.fltintVal);
-    Serial.print("To  NodeID:");Serial.println(mes.nodeID);
->>>>>>> 334707f512983dc61ffc4ac534a4e1d668b3ad04
     Serial.print("   payLoad:");
           for (int i=0; i<32; i++) Serial.print(mes.payLoad[i]);
     Serial.println(":");
@@ -40,7 +30,6 @@ void rfSendMsg(int rfPackTo) {
   Serial.print("Sending to Mesh Addr: ");
   Serial.println(rfPackTo);  
 
-<<<<<<< HEAD
   // XXXX - copy mes into toSendData here XXXXXX
   //uint8_t toSendData[] = "ABCDEFGHIJ";
   //Serial.print("temp dummy toSendData =");
@@ -48,13 +37,6 @@ void rfSendMsg(int rfPackTo) {
   // Send a message to an rf69 mesh node
   // A route to the destination will be automatically discovered.
   if (manager.sendtoWait((uint8_t*)&mes, sizeof(mes), rfPackTo) == RH_ROUTER_ERROR_NONE)
-=======
-  // XXXX - copy mes into radioDataBuf here XXXXXX
-
-  // Send a message to an rf69 mesh node
-  // A route to the destination will be automatically discovered.
-  if (manager.sendtoWait(radioDataBuf, sizeof(radioDataBuf), rfPackTo) == RH_ROUTER_ERROR_NONE)
->>>>>>> 334707f512983dc61ffc4ac534a4e1d668b3ad04
   {
     // It has been reliably delivered to the next node.
     Serial.println("Message reliably delivered.");
@@ -74,11 +56,7 @@ void rfSendMsg(int rfPackTo) {
     #endif
   }
   
-<<<<<<< HEAD
   // code below is the old pre RadioHead rf send code.
-=======
-  // code below is the pold pre RadioHead rf send code.
->>>>>>> 334707f512983dc61ffc4ac534a4e1d668b3ad04
   
   // int i = RFTXRETRIES;                  // number of RF transmission retries
 

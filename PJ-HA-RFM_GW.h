@@ -4,11 +4,7 @@
 #include <arduino.h>
 
 #define RH_MESH_MAX_MESSAGE_LEN 80  // Max size of packet for RadioHead
-<<<<<<< HEAD
 #define HARFPACKSIZE 52 // Proper packet size for one of my home automation RF packets
-=======
-#define HARFPACKSIZE 99 // Proper packet size for one of my home automation RF packets
->>>>>>> 334707f512983dc61ffc4ac534a4e1d668b3ad04
 #include <RHMesh.h>
 #include <RH_RF69.h>
 #include <SPI.h>

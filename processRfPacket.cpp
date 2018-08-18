@@ -60,12 +60,12 @@ void processRfPacket(int rfPackLen, int rfPackFrom) {
     Serial.println("<<<< RF msg received with correct size.");
     Serial.print("Inbound Message from Node:");Serial.println(rfPackFrom);
     Serial.println("=========RF msg data===================");
-    Serial.print("From NodeID:");Serial.println(mes.nodeID);
-    Serial.print("      devID:");Serial.println(mes.devID);
-    Serial.print("        cmd:");Serial.println(mes.cmd);
-    Serial.print("     intVal:");Serial.println(mes.intVal);
-    Serial.print("  fltintVal:");Serial.println(mes.fltintVal);
-    Serial.print("    payLoad:");
+    Serial.print("To  NodeID:");Serial.println(mes.nodeID);
+    Serial.print("     devID:");Serial.println(mes.devID);
+    Serial.print("       cmd:");Serial.println(mes.cmd);
+    Serial.print("    intVal:");Serial.println(mes.intVal);
+    Serial.print(" fltintVal:");Serial.println(mes.fltintVal);
+    Serial.print("   payLoad:");
           for (int i=0; i<32; i++) Serial.print(mes.payLoad[i]);
     Serial.println(":");
     Serial.println("=======================================");
@@ -133,6 +133,7 @@ void processRfPacket(int rfPackLen, int rfPackFrom) {
       Serial.print("+   Topic:"); Serial.println(buff_topic);
       Serial.print("+ Payload:"); Serial.println(buff_mess);   
       Serial.println("+++++++++++++++++++++++++++++++++++++++++++++++++++++");
+      Serial.println();
       #endif
       
 

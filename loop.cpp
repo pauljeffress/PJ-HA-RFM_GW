@@ -39,6 +39,7 @@ void loop() {
   //
   
   // New RadioHead code to check for and grab an RF packet
+<<<<<<< HEAD
   uint8_t len = sizeof(mes);
   uint8_t from;
   if (manager.recvfromAck((uint8_t*)&mes, &len, &from)) // a valid RadioHead message was received for this node.
@@ -48,6 +49,18 @@ void loop() {
     //Serial.print(", len=");
     //Serial.print(len);
 
+=======
+  uint8_t len = sizeof(radioDataBuf);
+  uint8_t from;
+  if (manager.recvfromAck(radioDataBuf, &len, &from)) // a valid RadioHead message was received for this node.
+  {
+    Serial.print("got a valid RadioHead message for this node from=");
+    Serial.print(from);
+    Serial.print(", len=");
+    Serial.print(len);
+    Serial.print(" : data="); 
+    Serial.println((char*)radioDataBuf);
+>>>>>>> 334707f512983dc61ffc4ac534a4e1d668b3ad04
   
     processRfPacket(len, from);
 
